@@ -10,10 +10,71 @@ df = pd.read_csv('startup_cleaned.csv')
 #data cleaning --------------------------------------------------------
 df['investors'].fillna('unknown', inplace = True)
 df['date'] = pd.to_datetime(df['date'])
-df['year'] = df['date'].dt.year
 df['month'] = df['date'].dt.month
-
+df['year'] = df['date'].dt.year
+#df['month']= (df['date'].dt.month).fillna(df['month'].mean()).astype(int)
+#df['year']= (df['date'].dt.year).fillna(df['year'].mean()).astype(int)
 #----------------------------------------------------------------------
+
+@st.cache_data
+def load_data():
+    return df
+
+def load_overall_analysis():
+        st.title('Overall Analysis')
+        total = df['amount'].sum()
+        max_funding = df.groupby('startup')['amount'].sum().max()
+        avg_funding = df.groupby('startup')['amount'].sum().mean()
+        top_startup = df.groupby('startup')['amount'].sum().sort_values(ascending=False).head(1).index[0]
+        col1 , col2, col3 , col4 = st.columns(4)
+        with col2:
+            st.metric(label='Total Funding', value=f'{round(total)} Cr')
+
+        with col1: 
+            st.metric(label='Max Funding', value=f'{round(max_funding)} Cr')
+            st.metric(label='Top Funded Startup', value=top_startup)
+
+        with col3:
+            st.metric(label='Average Funding', value=f'{round(avg_funding)} Cr')
+
+        with col4:
+            st.metric(label='Total Startups', value=df['startup'].nunique())
+
+        st.header('MoM funding trend')
+
+        if "selected_option" not in st.session_state:
+            st.session_state.selected_option = 'total funding'
+
+        options = ['total funding', 'number of startups funded']
+
+        option = st.selectbox(
+            "Select option",
+            options,
+            index=options.index(st.session_state.selected_option)
+        )
+
+        # Save selection
+        st.session_state.selected_option = option
+
+        st.write("Selected:", option)
+
+        if option == 'total funding':
+            pass
+
+        elif option == 'number of startups funded':
+            temp = df.groupby(['year' , 'month'])['startup'].count().reset_index()
+            temp['xaxis'] = temp['month'].astype('str') + "-" + temp['year'].astype(str)
+            fig , ax = plt.subplots(figsize=(10,5))
+            ax.plot(temp['xaxis'], temp['startup'])
+            ax.set_xlabel('Month-Year')
+            ax.set_ylabel('Number of Startups Funded')
+            ax.grid()
+            plt.xticks(rotation=90)
+            st.pyplot(fig)
+
+            
+
+
 
 def load_invesstor_details(investor):
     st.header(investor)
@@ -65,28 +126,8 @@ st.sidebar.title('Startup Funding Analysis')
 option = st.sidebar.selectbox('Select an option', ['Overall analysis', 'Startup', 'Investor'])
 
 if option == 'Overall analysis':
-    btn0 = st.sidebar.button('Show Analysis')
-    if btn0:
-        st.title('Overall Analysis')
-        total = df['amount'].sum()
-        max_funding = df.groupby('startup')['amount'].sum().max()
-        avg_funding = df.groupby('startup')['amount'].sum().mean()
-        top_startup = df.groupby('startup')['amount'].sum().sort_values(ascending=False).head(1).index[0]
-        col1 , col2, col3 , col4 = st.columns(4)
-        with col2:
-            st.metric(label='Total Funding', value=f'{round(total)} Cr')
-
-        with col1: 
-            st.metric(label='Max Funding', value=f'{round(max_funding)} Cr')
-            st.metric(label='Top Funded Startup', value=top_startup)
-            
-        with col3:
-            st.metric(label='Average Funding', value=f'{round(avg_funding)} Cr')
-
-        with col4:
-            st.metric(label='Total Startups', value=df['startup'].nunique())
+        load_overall_analysis()
         
-
 
 
 elif option == 'Startup':
